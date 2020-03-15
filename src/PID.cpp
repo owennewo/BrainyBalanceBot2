@@ -1,9 +1,5 @@
 #include <Arduino.h>
-
-
-#define ITERM_MAX_ERROR 300   // Iterm windup constants for PI control 
-#define ITERM_MAX 50000
-
+#include <User_Defines.h>
 
 float speedIntError = 0;
 float lastAngleError = 0;
@@ -17,7 +13,7 @@ void PidUpdate(float _kp_speed, float _ki_speed, float _kp_angle, float _kd_angl
   kd_angle = _kd_angle;
 }
 
-float PidSpeedToAngle(long speed, long setSpeed, float sampleInterval) {
+float PidSpeedToAngle(long speed, long setSpeed, float sampleInterval, boolean crashed) {
 
   // float error;
   // float output;
@@ -27,8 +23,18 @@ float PidSpeedToAngle(long speed, long setSpeed, float sampleInterval) {
   errorSum += constrain(speedError, -ITERM_MAX_ERROR, ITERM_MAX_ERROR);
   errorSum = constrain(errorSum, -ITERM_MAX, ITERM_MAX);
 
+  if (crashed) {
+    errorSum = 0;  // avoiding integral windup
+  }
+  
+
   float angleTarget = kp_speed * speedError + ki_speed * errorSum * sampleInterval;
   
+  if (angleTarget > 40) {
+    Serial.printf("\n\nBANG! %f %f\n", angleTarget, sampleInterval);
+    while(true) ;
+  }
+
   return (angleTarget);
 }
 

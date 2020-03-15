@@ -1,25 +1,18 @@
 #include <Arduino.h>
+#include <User_Defines.h>
 
-#define TIMER_PRESCALER_DIV 16
-
-#define MICROSTEPS 32
-#define MIN_INTERVAL 100
+enum Move {
+  FORWARDS = 1,
+  STOP = 0,
+  BACKWARDS = -1
+};
 
 hw_timer_t * leftTimer = NULL;
 hw_timer_t * rightTimer = NULL;
-portMUX_TYPE leftTimerMux = portMUX_INITIALIZER_UNLOCKED;
-portMUX_TYPE rightTimerMux = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
-const int microsteps = 32; //8; // A4988 is set for 1/8th steps
-
-uint8_t leftDirPin;
-uint8_t leftStepPin;
-uint8_t rightDirPin;
-uint8_t rightStepPin;
-uint8_t enablePin;
-
-int leftDir;
-int rightDir;
+Move leftMove; 
+Move rightMove; 
 
 boolean leftHigh;
 boolean rightHigh;
@@ -27,119 +20,114 @@ boolean rightHigh;
 volatile int leftStepsCount;
 volatile int rightStepsCount;
 
-boolean motorEnabled = true;
+boolean motorEnabled = false;
 
 void IRAM_ATTR onLeftTimer() {
-  portENTER_CRITICAL_ISR(&leftTimerMux);
-  leftStepsCount += leftDir;
-  portEXIT_CRITICAL_ISR(&leftTimerMux);
-  // leftHigh = !leftHigh; 
-  // digitalWrite(leftStepPin, leftHigh);
+  if (leftMove != STOP) {
+    portENTER_CRITICAL_ISR(&timerMux);
+    leftStepsCount += leftMove;
+    portEXIT_CRITICAL_ISR(&timerMux);
+  }
 }
 
 void IRAM_ATTR onRightTimer() {
-  portENTER_CRITICAL_ISR(&rightTimerMux);
-  rightStepsCount  += rightDir;
-  portEXIT_CRITICAL_ISR(&rightTimerMux);
-  // rightHigh = !rightHigh; 
-  // digitalWrite(rightStepPin, rightHigh);
+  portENTER_CRITICAL_ISR(&timerMux);
+  rightStepsCount  += rightMove;
+  portEXIT_CRITICAL_ISR(&timerMux);
 }
 
 void MotorsEnable() {
   if (!motorEnabled) {
+    Serial.println("\nOK!");
     motorEnabled = true;
-    Serial.println("MOTOR +");
-    digitalWrite(enablePin, LOW);
+    digitalWrite(PIN_MOTOR_ENABLE, LOW);
+    timerAlarmEnable(leftTimer);
+    timerAlarmEnable(rightTimer);
   }
 }
 
 void MotorsDisable() {
   if (motorEnabled) {
     motorEnabled = false;
-    Serial.println("MOTOR -");
-    digitalWrite(enablePin, HIGH);
+    Serial.println("\nCRASH!");
+    digitalWrite(PIN_MOTOR_ENABLE, HIGH);
+    timerAlarmDisable(leftTimer);
+    timerAlarmDisable(rightTimer);
   }
 }
 
-void MotorsSetup(uint8_t _leftDirPin, uint8_t _leftStepPin, uint8_t _rightDirPin, uint8_t _rightStepPin, uint8_t _enablePin) {
-  leftDirPin = _leftDirPin;
-  leftStepPin = _leftStepPin;
-  rightDirPin = _rightDirPin;
-  rightStepPin = _rightStepPin;
-  enablePin = _enablePin;
-
-  pinMode(leftStepPin, OUTPUT);
-  pinMode(leftDirPin, OUTPUT);
-  pinMode(rightDirPin, OUTPUT);
-  pinMode(rightStepPin, OUTPUT);
-  pinMode(enablePin, OUTPUT);
-
-  MotorsDisable();
-
-  Serial.println("initialising left timer");
-  leftTimer = timerBegin(0, 80, true); // prescaler of 80 means 1Mhz
-  timerAttachInterrupt(leftTimer, &onLeftTimer, true);
-  timerAlarmWrite(leftTimer, 1000000, true);
-  timerAlarmEnable(leftTimer);
-  Serial.println("initialising right timer");
-  rightTimer = timerBegin(1, 80, true); // prescaler of 80 means 1Mhz
-  timerAttachInterrupt(rightTimer, &onRightTimer, true);
-  timerAlarmWrite(rightTimer, 1000000, true);
-  timerAlarmEnable(rightTimer);
-
-  Serial.println("initialised timer");
-}
-
-float MotorsGetSpeed() {
-
-
-  portENTER_CRITICAL(&leftTimerMux);
-  portENTER_CRITICAL(&rightTimerMux);
-  float averageSteps = (float) (leftStepsCount + rightStepsCount) / 2;
-  leftStepsCount = 0;
-  rightStepsCount = 0;
-  portEXIT_CRITICAL(&leftTimerMux);
-  portEXIT_CRITICAL(&rightTimerMux);
+Move MotorsSetSpeed(hw_timer_t * timer, uint8_t dirPin, long degreesPerSecond) {
   
-  float averageSpeed = averageSteps * 360 / (200 * MICROSTEPS * 2); 
+  float stepsPerSecond = (float) (2 * degreesPerSecond * 200 * STEPPER_MICROSTEPS) / 360;
+  // Serial.printf("######### %d %f\n", degreesPerSecond, stepsPerSecond);
   
-  // data.speedAngular = (data.angularVelocity * 2.5);
-  // data.speedEstimated = - data.speedMeasured + data.speedAngular;
-  // data.speedEstimatedSmoothed = data.speedEstimatedSmoothed * 0.9 + data.speedEstimated * 0.1;
-  return averageSpeed;
-
-}
-
-uint8_t MotorsSetSpeed(hw_timer_t * timer, uint8_t dirPin, long degreesPerSecond) {
-  if (degreesPerSecond == 0) {
-    degreesPerSecond = 1;
+  if (stepsPerSecond == 0) {
+    stepsPerSecond = 1;
   }
-  float stepsPerSecond = (float) degreesPerSecond * 200 / 360 * MICROSTEPS;
-  // Serial.printf("######### %d %d\n", degreesPerSecond, stepsPerSecond);
-  
-  long toggleInterval = long(1000000 / (stepsPerSecond * 2));
 
-  if (toggleInterval < MIN_INTERVAL) {
-    toggleInterval = MIN_INTERVAL;
-    Serial.println("Canna go any faster captain!");
+  long toggleInterval = abs(long(TIMER_SPEED / stepsPerSecond));
+
+  if (toggleInterval < MIN_STEPPER_INTERVAL) {
+    Serial.printf("Warn: %lu is below minimum interval of %lu\n", toggleInterval, (long) MIN_STEPPER_INTERVAL);
+    toggleInterval = MIN_STEPPER_INTERVAL;
   }
   // Serial.printf("######### %d %f %d\n", degreesPerSecond, stepsPerSecond, toggleInterval);
   // while(true) ;
-  timerAlarmWrite(leftTimer, abs(toggleInterval), true);
+  timerAlarmWrite(timer, toggleInterval, true);
 
-  if (degreesPerSecond >= 0) {
+  if (degreesPerSecond == 0) {
+    return STOP;
+  } else if (degreesPerSecond > 0) {
     digitalWrite(dirPin, LOW);
-    return 1;
+    return FORWARDS;
   } else {
     digitalWrite(dirPin, HIGH);
-    return -1;
+    return BACKWARDS;
   }
 }
 
 void MotorsSetLeftSpeed(long degreesPerSecond) {
-  leftDir = MotorsSetSpeed(leftTimer, leftDirPin, degreesPerSecond);
+  leftMove = MotorsSetSpeed(leftTimer, PIN_MOTOR_LEFT_DIR, degreesPerSecond);
 }
 
 void MotorsSetRightSpeed(long degreesPerSecond) {
-  rightDir = MotorsSetSpeed(rightTimer, rightDirPin, degreesPerSecond);
+  rightMove = MotorsSetSpeed(rightTimer, PIN_MOTOR_RIGHT_DIR, degreesPerSecond);
 }
+
+void MotorsSetup() {
+  
+  pinMode(PIN_MOTOR_LEFT_STEP, OUTPUT);
+  pinMode(PIN_MOTOR_LEFT_DIR, OUTPUT);
+  pinMode(PIN_MOTOR_RIGHT_STEP, OUTPUT);
+  pinMode(PIN_MOTOR_RIGHT_DIR, OUTPUT);
+  pinMode(PIN_MOTOR_ENABLE, OUTPUT);
+
+  // MotorsDisable();
+  // long startSpeed = 1;
+
+  Serial.println("initialising left timer");
+  leftTimer = timerBegin(1, TIMER_PRESCALER_DIVIDER, true); // prescaler of 80 means 1Mhz
+  timerAttachInterrupt(leftTimer, &onLeftTimer, true);
+  MotorsSetLeftSpeed(0);
+  
+  Serial.println("initialising right timer");
+  rightTimer = timerBegin(0, TIMER_PRESCALER_DIVIDER, true); // prescaler of 80 means 1Mhz
+  timerAttachInterrupt(rightTimer, &onRightTimer, true);
+  MotorsSetRightSpeed(0);
+  
+  Serial.println("initialised timer");
+}
+
+float MotorsGetSpeed(float sampleInterval) {
+
+  portENTER_CRITICAL(&timerMux);
+  float averageSteps = (float) (leftStepsCount + rightStepsCount) / 2;
+  float averageSpeed = averageSteps * 360 / (200 * STEPPER_MICROSTEPS * 2 * sampleInterval);
+  // Serial.printf("============================%6d (%2d) + %6d (%2d) / 2 = %6.1f :%6.1f\n", leftStepsCount, leftDir, rightStepsCount, rightDir, averageSteps, averageSpeed);
+  leftStepsCount = 0;
+  rightStepsCount = 0;
+  portEXIT_CRITICAL(&timerMux);
+  
+  return averageSpeed;
+}
+

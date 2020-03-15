@@ -2,10 +2,10 @@
 
 #define _IMU_H
 
-void ImuSetup(uint8_t interruptPin);
+void ImuSetup();
 bool ImuHasData();
 float ImuGetAngle();
 float ImuGetSampleInterval();
-boolean ImuCrashed(float angle);
+bool ImuCrashed(float angle);
 
 #endif

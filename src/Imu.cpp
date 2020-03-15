@@ -1,16 +1,13 @@
 #include <Arduino.h>
+#include <User_Defines.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps_V6_12.h"
 #include "Wire.h"
 
-#define M_PI		3.14159265358979323846
-
 long dataCount = 0;
 MPU6050 mpu;
 
-#define CRASH_ANGLE 20
 
-uint8_t interruptPin;
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -46,15 +43,14 @@ void IRAM_ATTR dmpDataReady() {
 // ===                      INITIAL SETUP                       ===
 // ================================================================
 
-void ImuSetup(uint8_t _interruptPin) {
-    interruptPin = _interruptPin;
+void ImuSetup() {
     Wire.begin();
     Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
 
     // initialize device
     Serial.println(F("Initializing I2C devices..."));
     mpu.initialize();
-    pinMode(interruptPin, INPUT);
+    pinMode(PIN_IMU_INTERRUPT, INPUT);
 
     // verify connection
     Serial.println(F("Testing device connections..."));
@@ -86,9 +82,9 @@ void ImuSetup(uint8_t _interruptPin) {
 
         // enable Arduino interrupt detection
         Serial.print(F("Enabling interrupt detection (Arduino external interrupt "));
-        Serial.print(digitalPinToInterrupt(interruptPin));
+        Serial.print(digitalPinToInterrupt(PIN_IMU_INTERRUPT));
         Serial.println(F(")..."));
-        attachInterrupt(digitalPinToInterrupt(interruptPin), dmpDataReady, RISING);
+        attachInterrupt(digitalPinToInterrupt(PIN_IMU_INTERRUPT), dmpDataReady, RISING);
         mpuIntStatus = mpu.getIntStatus();
 
         // set our DMP Ready flag so the main loop() function knows it's okay to use it
@@ -110,7 +106,7 @@ void ImuSetup(uint8_t _interruptPin) {
 }
 
 
-boolean ImuCrashed(float angle) {
+bool ImuCrashed(float angle) {
     return (abs(angle) > CRASH_ANGLE);
 }
 
@@ -161,7 +157,9 @@ boolean ImuHasData() {
         // reset so we can continue cleanly
         mpu.resetFIFO();
       //  fifoCount = mpu.getFIFOCount();  // will be zero after reset no need to ask
-        Serial.println(F("FIFO overflow!"));
+        long interval = micros() - lastTime;
+        Serial.printf("FIFO overflow! last succeful read was %dms ago\n", int(interval/1000));
+        while(true) ;
 
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
     } else if (mpuIntStatus & _BV(MPU6050_INTERRUPT_DMP_INT_BIT)) {
