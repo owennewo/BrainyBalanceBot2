@@ -3,6 +3,8 @@
 #define _REMOTE_H
 
 void RemoteSetup();
-void RemoteLoop();
+bool RemoteHasCommands();
+long RemoteGetSteeringCommand();
+long RemoteGetSpeedCommand();
 
 #endif

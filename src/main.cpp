@@ -19,17 +19,21 @@ BotState bot;
 void setup()
 {
   Serial.begin(115200);
+
+  RemoteSetup();
   PidUpdate(0.0027, 0, 200, 0.5);
   DisplaySetup();
   ImuSetup();
   MotorsSetup();
-  // RemoteSetup();
 }
 
 void loop()
 {
 
-  // RemoteLoop();
+  if (RemoteHasCommands()) {
+    bot.steeringCommand = RemoteGetSteeringCommand();
+    bot.speedCommand = RemoteGetSpeedCommand();
+  }
 
   if (ImuHasData())
   {
