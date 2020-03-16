@@ -37,28 +37,29 @@ void DisplayVoltage()
 
 }
 
-void drawStats(float value, float max, int y, uint32_t color) {
-
-    float x1 = map(value, -max, max, 0, sprite.width());
+void drawStats(char * prefix, float value, float max, int y, uint32_t color) {
+    float x1 = map(value, -max, max, 25, sprite.width() - 25);
     float x2 = sprite.width() / 2;
+
+    sprite.drawString(prefix, 0, y);
 
     if (x1 < x2) {
         sprite.fillRect(x1, y, x2 - x1, 8, color);
     } else {
         sprite.fillRect(x2, y, x1 - x2, 8, color);
     }
-    
 }
 
 void DisplayMotion(BotState bot) {
-    drawStats(bot.steeringCommand, MAX_SPEED, 60, TFT_GREEN);
-    drawStats(bot.speedCommand, MAX_SPEED, 70, TFT_ORANGE);
+    drawStats("as", bot.angularSpeed, 100, 36, TFT_PINK);
+    drawStats("lr", bot.steeringCommand, MAX_SPEED, 48, TFT_GREEN);
+    drawStats("sc", bot.speedCommand, MAX_SPEED, 60, TFT_ORANGE);
     
-    drawStats(bot.speed, MAX_SPEED, 80, TFT_GREEN);
-    drawStats(bot.speedTarget, MAX_SPEED, 90, TFT_ORANGE);
+    drawStats("s", bot.speed, MAX_SPEED, 72, TFT_GREEN);
+    drawStats("st", bot.speedTarget, MAX_SPEED, 84, TFT_ORANGE);
 
-    drawStats(bot.angle, CRASH_ANGLE, 100, TFT_BLUE);
-    drawStats(bot.angleTarget, CRASH_ANGLE, 110, TFT_RED);
+    drawStats("a", bot.angle, CRASH_ANGLE, 96, TFT_BLUE);
+    drawStats("at", bot.angleTarget, CRASH_ANGLE, 108, TFT_RED);
 }
 
 void DisplayStatus(boolean crashed) {
@@ -73,7 +74,7 @@ void DisplayStatus(boolean crashed) {
 
 void DisplayLoop(BotState bot) {
     
-    Serial.printf("\ra:%5.1f at:%5.1f av:%3.2f s:%5d st:%5d i:%4.3f", bot.angle, bot.angleTarget, bot.angularSpeed, bot.speed, bot.speedTarget, bot.sampleInterval);
+    Serial.printf("\ra:%5.1f at:%5.1f as:%3.2f s:%5d st:%5d i:%4.3f", bot.angle, bot.angleTarget, bot.angularSpeed, bot.speed, bot.speedTarget, bot.sampleInterval);
     
     static uint64_t timeStamp = 0;
     if (millis() - timeStamp > 100) {
