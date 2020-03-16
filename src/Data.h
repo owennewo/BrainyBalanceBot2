@@ -1,3 +1,6 @@
+#include <Arduino.h>
+#include <User_Defines.h>
+
 #ifndef _DATA_H
 #define _DATA_H
 
@@ -10,6 +13,19 @@ struct BotState {
     float angleTarget; // this is the target angle
     bool crashed;
     float sampleInterval;
+    float lastAngle;
+    float angularSpeed;
+    long lastSampleTime;
+
+    void setAngle(float _angle) {
+        angle = _angle;
+        long now = micros();
+        sampleInterval = (float) (now - lastSampleTime) / 1000000; 
+        lastSampleTime = now; 
+        angularSpeed = (angle - lastAngle) / sampleInterval;
+        lastAngle = angle;
+        crashed = (abs(angle) > CRASH_ANGLE);
+    }
 };
 
 #endif

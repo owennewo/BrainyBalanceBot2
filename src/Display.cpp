@@ -73,7 +73,7 @@ void DisplayStatus(boolean crashed) {
 
 void DisplayLoop(BotState bot) {
     
-    Serial.printf("\ra:%5.1f at:%5.1f s:%5d st:%5d i:%4.3f", bot.angle, bot.angleTarget, bot.speed, bot.speedTarget, bot.sampleInterval);
+    Serial.printf("\ra:%5.1f at:%5.1f av:%3.2f s:%5d st:%5d i:%4.3f", bot.angle, bot.angleTarget, bot.angularSpeed, bot.speed, bot.speedTarget, bot.sampleInterval);
     
     static uint64_t timeStamp = 0;
     if (millis() - timeStamp > 100) {

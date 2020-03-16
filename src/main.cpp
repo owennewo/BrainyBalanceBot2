@@ -37,22 +37,21 @@ void loop()
 
   if (ImuHasData())
   {
-    bot.angle = ImuGetAngle();
-    bot.sampleInterval = ImuGetSampleInterval();
-    bot.crashed = ImuCrashed(bot.angle);
-
+    bot.setAngle(ImuGetAngle());
     bot.speed = MotorsGetSpeed(bot.sampleInterval);
     
-    bot.angleTarget = PidSpeedToAngle(bot.speed, bot.speedCommand, bot.sampleInterval, bot.crashed);
-    bot.speedTarget = PidAngleToSteps(bot.angle, bot.angleTarget, bot.sampleInterval);
-
-    bot.speedTarget = constrain(bot.speedTarget, bot.speed - MAX_ACCEL, bot.speed + MAX_ACCEL);
-    bot.speedTarget = constrain(bot.speedTarget, -MAX_SPEED, MAX_SPEED);
-
-    if (bot.crashed) {
+    if (bot.crashed || bot.sampleInterval == 0) {
       MotorsDisable();
+      Serial.print("-");
     } else {
       MotorsEnable();
+      Serial.print("+");
+      bot.angleTarget = PidSpeedToAngle(bot.speed, bot.speedCommand, bot.sampleInterval, bot.crashed);
+      bot.speedTarget = PidAngleToSteps(bot.angle, bot.angleTarget, bot.sampleInterval);
+
+      bot.speedTarget = constrain(bot.speedTarget, bot.speed - MAX_ACCEL, bot.speed + MAX_ACCEL);
+      bot.speedTarget = constrain(bot.speedTarget, -MAX_SPEED, MAX_SPEED);
+
       MotorsSetLeftSpeed(bot.speedTarget - bot.steeringCommand);
       MotorsSetRightSpeed(bot.speedTarget + bot.steeringCommand);
     }    

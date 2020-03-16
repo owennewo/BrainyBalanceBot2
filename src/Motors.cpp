@@ -102,9 +102,6 @@ void MotorsSetup() {
   pinMode(PIN_MOTOR_RIGHT_DIR, OUTPUT);
   pinMode(PIN_MOTOR_ENABLE, OUTPUT);
 
-  // MotorsDisable();
-  // long startSpeed = 1;
-
   Serial.println("initialising left timer");
   leftTimer = timerBegin(1, TIMER_PRESCALER_DIVIDER, true); // prescaler of 80 means 1Mhz
   timerAttachInterrupt(leftTimer, &onLeftTimer, true);

@@ -6,6 +6,8 @@ float lastAngleError = 0;
 
 float kp_speed, ki_speed, kp_angle, kd_angle;
 
+boolean first = true;
+
 void PidUpdate(float _kp_speed, float _ki_speed, float _kp_angle, float _kd_angle) {
   kp_speed = _kp_speed;
   ki_speed = _ki_speed;
@@ -15,8 +17,6 @@ void PidUpdate(float _kp_speed, float _ki_speed, float _kp_angle, float _kd_angl
 
 float PidSpeedToAngle(long speed, long setSpeed, float sampleInterval, boolean crashed) {
 
-  // float error;
-  // float output;
   static float errorSum;
 
   long speedError = setSpeed - speed;
@@ -27,14 +27,7 @@ float PidSpeedToAngle(long speed, long setSpeed, float sampleInterval, boolean c
     errorSum = 0;  // avoiding integral windup
   }
   
-
   float angleTarget = kp_speed * speedError + ki_speed * errorSum * sampleInterval;
-  
-  if (angleTarget > 40) {
-    Serial.printf("\n\nBANG! %f %f\n", angleTarget, sampleInterval);
-    while(true) ;
-  }
-
   return (angleTarget);
 }
 
@@ -42,6 +35,13 @@ float PidSpeedToAngle(long speed, long setSpeed, float sampleInterval, boolean c
 float smoothedDeriveError = 0;
 
 long PidAngleToSteps(float angleMeasured, float angleTarget, float sampleInterval) {
+
+  if (sampleInterval == 0 && ! first) {
+    Serial.println("Divide by zero ahead!");
+    while(true) ; // strict approach means find bugs
+    return 0;
+  }
+  first = false;
 
   static long angleTargetOld;
   static long angleMeasuredOld;
@@ -60,4 +60,3 @@ long PidAngleToSteps(float angleMeasured, float angleTarget, float sampleInterva
   return (steps);
   
 }
-

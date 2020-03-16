@@ -4,10 +4,7 @@
 #include "MPU6050_6Axis_MotionApps_V6_12.h"
 #include "Wire.h"
 
-long dataCount = 0;
 MPU6050 mpu;
-
-
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -22,19 +19,14 @@ Quaternion q;           // [w, x, y, z]         quaternion container
 VectorFloat gravity;    // [x, y, z]            gravity vector
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-long lastTime;
-float lastAngle;
 float angle;
-float sampleInterval;
-
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void IRAM_ATTR dmpDataReady() {
-  dataCount++;
-    mpuInterrupt = true;
+  mpuInterrupt = true;
 }
 
 
@@ -105,18 +97,8 @@ void ImuSetup() {
 
 }
 
-
-bool ImuCrashed(float angle) {
-    return (abs(angle) > CRASH_ANGLE);
-}
-
-
 float ImuGetAngle() {
     return angle;
-}
-
-float ImuGetSampleInterval() {
-    return sampleInterval;
 }
 
 boolean ImuHasData() {
@@ -157,8 +139,7 @@ boolean ImuHasData() {
         // reset so we can continue cleanly
         mpu.resetFIFO();
       //  fifoCount = mpu.getFIFOCount();  // will be zero after reset no need to ask
-        long interval = micros() - lastTime;
-        Serial.printf("FIFO overflow! last succeful read was %dms ago\n", int(interval/1000));
+        Serial.printf("FIFO overflow! last successfully read a while ago - bust interupt?\n");
         while(true) ;
 
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
@@ -176,16 +157,7 @@ boolean ImuHasData() {
         mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
         angle = -ypr[2] * 180/M_PI;
         // Serial.printf("Angle is: %f\n", angle);
-        long now = micros();
-        sampleInterval = (float) (now - lastTime) / 1000000; 
-  
-        // data.frequency = (float) 1000000 / data.sampleInterval;
-        // data.angularVelocity = data.angleMeasured - lastAngle;
-        lastTime = now;
-        lastAngle = angle;
-        // blink LED to indicate activity
-        // blinkState = !blinkState;
-        // digitalWrite(LED_PIN, blinkState);
+        
         return true;
         
     }
