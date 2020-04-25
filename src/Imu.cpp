@@ -39,6 +39,10 @@ void ImuSetup() {
     Wire.begin();
     Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
 
+    // BIT Weird but I'm providing power to IMU programmatically
+    pinMode(PIN_IMU_VCC, OUTPUT);
+    digitalWrite(PIN_IMU_VCC, HIGH);
+
     // initialize device
     Serial.println(F("Initializing I2C devices..."));
     mpu.initialize();
@@ -53,14 +57,23 @@ void ImuSetup() {
     Serial.println(F("Initializing DMP..."));
     devStatus = mpu.dmpInitialize();
 
-    // supply your own gyro offsets here, scaled for min sensitivity
-    mpu.setXAccelOffset(956); 
-    mpu.setYAccelOffset(-1041);
-    mpu.setZAccelOffset(1294); // 1688 factory default for my test chip
+    // supply your own acc/gyro offsets here, scaled for min sensitivity
+    // mpu.setXAccelOffset(956); 
+    // mpu.setYAccelOffset(-1041);
+    // mpu.setZAccelOffset(1294); // 1688 factory default for my test chip
 
-    mpu.setXGyroOffset(65);
-    mpu.setYGyroOffset(-58);
-    mpu.setZGyroOffset(2);
+    // mpu.setXGyroOffset(65);
+    // mpu.setYGyroOffset(-58);
+    // mpu.setZGyroOffset(2);
+
+    mpu.setXAccelOffset(1064); 
+    mpu.setYAccelOffset(-910);
+    mpu.setZAccelOffset(1298); // 1688 factory default for my test chip
+
+    mpu.setXGyroOffset(74);
+    mpu.setYGyroOffset(-52);
+    mpu.setZGyroOffset(-16);
+
 
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {
@@ -155,7 +168,8 @@ boolean ImuHasData() {
         mpu.dmpGetQuaternion(&q, fifoBuffer);
         mpu.dmpGetGravity(&gravity, &q);
         mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        angle = -ypr[2] * 180/M_PI;
+        // PITCH = 1, ROLL = 2. How did you orientate your mpu650? 
+        angle = -ypr[1] * 180/M_PI;
         // Serial.printf("Angle is: %f\n", angle);
         
         return true;

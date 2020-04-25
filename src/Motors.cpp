@@ -14,8 +14,8 @@ portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 Move leftMove; 
 Move rightMove; 
 
-boolean leftHigh;
-boolean rightHigh;
+int leftHigh = 0;
+int rightHigh = 0;
 
 volatile int leftStepsCount;
 volatile int rightStepsCount;
@@ -25,6 +25,9 @@ boolean motorEnabled = false;
 void IRAM_ATTR onLeftTimer() {
   if (leftMove != STOP) {
     portENTER_CRITICAL_ISR(&timerMux);
+    leftHigh = 1 -(leftHigh);
+    digitalWrite(PIN_MOTOR_LEFT_STEP, leftHigh);
+    // Serial.print(leftHigh);
     leftStepsCount += leftMove;
     portEXIT_CRITICAL_ISR(&timerMux);
   }
@@ -32,6 +35,8 @@ void IRAM_ATTR onLeftTimer() {
 
 void IRAM_ATTR onRightTimer() {
   portENTER_CRITICAL_ISR(&timerMux);
+  rightHigh = 1 -(rightHigh);
+  digitalWrite(PIN_MOTOR_RIGHT_STEP, rightHigh);
   rightStepsCount  += rightMove;
   portEXIT_CRITICAL_ISR(&timerMux);
 }
@@ -56,8 +61,7 @@ void MotorsDisable() {
   }
 }
 
-Move MotorsSetSpeed(hw_timer_t * timer, uint8_t dirPin, long degreesPerSecond) {
-  
+long speedToInterval(long degreesPerSecond) {
   float stepsPerSecond = (float) (2 * degreesPerSecond * 200 * STEPPER_MICROSTEPS) / 360;
   // Serial.printf("######### %d %f\n", degreesPerSecond, stepsPerSecond);
   
@@ -71,9 +75,10 @@ Move MotorsSetSpeed(hw_timer_t * timer, uint8_t dirPin, long degreesPerSecond) {
     Serial.printf("Warn: %lu is below minimum interval of %lu\n", toggleInterval, (long) MIN_STEPPER_INTERVAL);
     toggleInterval = MIN_STEPPER_INTERVAL;
   }
-  // Serial.printf("######### %d %f %d\n", degreesPerSecond, stepsPerSecond, toggleInterval);
-  // while(true) ;
-  timerAlarmWrite(timer, toggleInterval, true);
+  return toggleInterval;
+}
+
+Move MotorsSetDirection(uint8_t dirPin, long degreesPerSecond) {
 
   if (degreesPerSecond == 0) {
     return STOP;
@@ -87,11 +92,16 @@ Move MotorsSetSpeed(hw_timer_t * timer, uint8_t dirPin, long degreesPerSecond) {
 }
 
 void MotorsSetLeftSpeed(long degreesPerSecond) {
-  leftMove = MotorsSetSpeed(leftTimer, PIN_MOTOR_LEFT_DIR, degreesPerSecond);
+  long toggleInterval = speedToInterval(degreesPerSecond);
+  timerAlarmWrite(leftTimer, toggleInterval, true);
+  leftMove = MotorsSetDirection(PIN_MOTOR_LEFT_DIR, degreesPerSecond);
 }
 
 void MotorsSetRightSpeed(long degreesPerSecond) {
-  rightMove = MotorsSetSpeed(rightTimer, PIN_MOTOR_RIGHT_DIR, degreesPerSecond);
+  long toggleInterval = speedToInterval(degreesPerSecond);
+  timerAlarmWrite(rightTimer, toggleInterval, true);
+  Serial.printf(" ### %5d %5d ", degreesPerSecond, toggleInterval);
+  rightMove = MotorsSetDirection(PIN_MOTOR_RIGHT_DIR, degreesPerSecond);
 }
 
 void MotorsSetup() {

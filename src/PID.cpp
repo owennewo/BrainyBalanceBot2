@@ -34,7 +34,16 @@ float PidSpeedToAngle(long speed, long setSpeed, float sampleInterval, boolean c
 
 float smoothedDeriveError = 0;
 
-long PidAngleToSteps(float angleMeasured, float angleTarget, float sampleInterval) {
+long constrainSpeed(long speedTarget, long speed) {
+  long speedConstrained = max(
+                            constrain(speedTarget, speed - MAX_ACCEL, speed + MAX_ACCEL), 
+                            constrain(speedTarget, speed - MAX_ACCEL, speed + MAX_ACCEL)
+                            );
+  speedConstrained = constrain(speedTarget, -MAX_SPEED, MAX_SPEED);
+  return speedConstrained;
+}
+
+long PidAngleToSpeed(float angleMeasured, float angleTarget, float sampleInterval) {
 
   if (sampleInterval == 0 && ! first) {
     Serial.println("Divide by zero ahead!");

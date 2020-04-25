@@ -2,7 +2,7 @@
 // TUNINGS
 // =======
 #define MAX_ACCEL 15
-#define MAX_SPEED 540
+#define MAX_SPEED 720
 
 #define ITERM_MAX_ERROR 300   // Iterm windup constants for PI control 
 #define ITERM_MAX 50000
@@ -26,11 +26,16 @@
 #define PIN_BUTTON_2 0
 
 // STEPPER PINS
-#define PIN_MOTOR_LEFT_STEP 37
-#define PIN_MOTOR_LEFT_DIR 38
+#define PIN_MOTOR_LEFT_STEP 26
+#define PIN_MOTOR_LEFT_DIR 25
 #define PIN_MOTOR_RIGHT_STEP 32
 #define PIN_MOTOR_RIGHT_DIR 33
-#define PIN_MOTOR_ENABLE 39
+#define PIN_MOTOR_ENABLE 15
+// Next pins arent't really connected
+#define PIN_IMU_GND 17
+#define PIN_IMU_VCC 2
+#define PIN_WIRE_SDA 21
+#define PIN_WIRE_SCL 22
 
 // I2C PINS
 // Note: SDA/SCL are using defaults

@@ -16,19 +16,76 @@ Button2 btn2(PIN_BUTTON_2);
 
 BotState bot;
 
+
+
+
 void setup()
 {
   Serial.begin(115200);
-
+  delay(1000);
   RemoteSetup();
   PidUpdate(0.0027, 0, 200, 0.5);
   DisplaySetup();
   ImuSetup();
   MotorsSetup();
+  // pinMode(PIN_MOTOR_ENABLE, OUTPUT);
+  // pinMode(PIN_MOTOR_LEFT_DIR, OUTPUT);
+  // pinMode(PIN_MOTOR_LEFT_STEP, OUTPUT);
+  // pinMode(PIN_MOTOR_RIGHT_DIR, OUTPUT);
+  // pinMode(PIN_MOTOR_RIGHT_STEP, OUTPUT);
+  // // pinMode(PIN_IMU_VCC, OUTPUT);
+
+  // // digitalWrite(PIN_IMU_VCC, HIGH);
+
+  // int delayMicros = 50;
+  // int steps = 200 * 32;
+  // digitalWrite(PIN_MOTOR_ENABLE, LOW);
+  // digitalWrite(PIN_MOTOR_LEFT_DIR, LOW);
+  // digitalWrite(PIN_MOTOR_RIGHT_DIR, LOW);
+
+  // Serial.println("Disabled");
+  // digitalWrite(PIN_MOTOR_ENABLE, HIGH);
+  // delay(5000);
+  // digitalWrite(PIN_MOTOR_ENABLE, LOW);
+  // Serial.println("Forwards Start");
+  // for (int i = 0; i < steps; i++) {
+  //   digitalWrite(PIN_MOTOR_LEFT_STEP, LOW);
+  //   digitalWrite(PIN_MOTOR_RIGHT_STEP, LOW);
+  //   delayMicroseconds(delayMicros);
+  //   digitalWrite(PIN_MOTOR_LEFT_STEP, HIGH);
+  //   digitalWrite(PIN_MOTOR_RIGHT_STEP, HIGH);
+  //   delayMicroseconds(delayMicros);
+  // }
+  // Serial.println("Forwards end");
+  // digitalWrite(PIN_MOTOR_ENABLE, HIGH);
+  // delay(5000);
+  // Serial.println("Backward Start");
+  // digitalWrite(PIN_MOTOR_ENABLE, LOW);
+  
+  // digitalWrite(PIN_MOTOR_LEFT_DIR, HIGH);
+  // digitalWrite(PIN_MOTOR_RIGHT_DIR, HIGH);
+  // for (int i = 0; i < steps; i++) {
+  //   digitalWrite(PIN_MOTOR_LEFT_STEP, LOW);
+  //   digitalWrite(PIN_MOTOR_RIGHT_STEP, LOW);
+  //   delayMicroseconds(delayMicros);
+  //   digitalWrite(PIN_MOTOR_LEFT_STEP, HIGH);
+  //   digitalWrite(PIN_MOTOR_RIGHT_STEP, HIGH);
+  //   delayMicroseconds(delayMicros);
+  // }
+  // Serial.println("Backward End");
+  
+  // digitalWrite(PIN_MOTOR_ENABLE, HIGH);
+  
+  // Serial.println("Done - disabled");
+  
+
 }
 
-void loop()
-{
+void loop() {
+
+// }
+
+// void loop2() {
 
   if (RemoteHasCommands()) {
     bot.steeringCommand = RemoteGetSteeringCommand();
@@ -45,13 +102,11 @@ void loop()
       Serial.print("-");
     } else {
       MotorsEnable();
-      Serial.print("+");
+      Serial.print(".");
       bot.angleTarget = PidSpeedToAngle(bot.speed, bot.speedCommand, bot.sampleInterval, bot.crashed);
-      bot.speedTarget = PidAngleToSteps(bot.angle, bot.angleTarget, bot.sampleInterval);
+      bot.speedTarget = PidAngleToSpeed(bot.angle, bot.angleTarget, bot.sampleInterval);
 
-      bot.speedTarget = constrain(bot.speedTarget, bot.speed - MAX_ACCEL, bot.speed + MAX_ACCEL);
-      bot.speedTarget = constrain(bot.speedTarget, -MAX_SPEED, MAX_SPEED);
-
+      
       MotorsSetLeftSpeed(bot.speedTarget - bot.steeringCommand);
       MotorsSetRightSpeed(bot.speedTarget + bot.steeringCommand);
     }    
